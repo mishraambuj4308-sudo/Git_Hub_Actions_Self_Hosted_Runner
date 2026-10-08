@@ -1,0 +1,57 @@
+name: Deploy Website to Nginx
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, linux, ec2]
+
+    steps:
+
+      # 1. Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Show server information
+      - name: Check server
+        run: |
+          echo "Deploying on:"
+          hostname
+          nginx -v
+
+      # 3. Install Sass if SCSS is used
+      - name: Install Sass
+        run: |
+          if ! command -v sass &> /dev/null; then
+            npm install -g sass
+          fi
+
+      # 4. Compile SCSS → CSS
+      - name: Compile SCSS
+        run: |
+          sass scss/style.scss css/style.css --no-source-map
+
+      # 5. Test Nginx configuration
+      - name: Test Nginx
+        run: |
+          sudo nginx -t
+
+      # 6. Deploy website
+      - name: Deploy files to Nginx
+        run: |
+          sudo rm -rf /var/www/nginx-demo/*
+          sudo cp -r ./* /var/www/nginx-demo/
+
+      # 7. Fix permissions
+      - name: Set permissions
+        run: |
+          sudo chown -R nginx:nginx /var/www/nginx-demo
+          sudo chmod -R 755 /var/www/nginx-demo
+
+      # 8. Reload Nginx
+      - name: Reload Nginx
+        run: |
+          sudo systemctl reload nginx
